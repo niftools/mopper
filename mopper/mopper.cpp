@@ -88,7 +88,7 @@ void mopper(std::ifstream & infile) {
 	hkpSimpleMeshShape * list = NULL;
 	hkpMoppCode* k_phkpMoppCode = NULL;
 
-	std::cout << "info: building mesh" << std::endl;
+	//std::cout << "info: building mesh" << std::endl;
 	list = new hkpSimpleMeshShape( 0.01f );
 	hkArray<hkVector4> &vertices = list->m_vertices;
 	hkArray<hkpSimpleMeshShape::Triangle> &triangles = list->m_triangles;
@@ -103,9 +103,9 @@ void mopper(std::ifstream & infile) {
 		float x, y, z;
 		infile >> x >> y >> z;
 		if (infile.eof() || infile.fail()) {
-			std::cout
-				<< "info: error while parsing vertices"
-				<< std::endl;
+			//std::cout
+			//	<< "info: error while parsing vertices"
+			//	<< std::endl;
 			return;
 		}
 		//std::cout
@@ -123,9 +123,9 @@ void mopper(std::ifstream & infile) {
 		hkpSimpleMeshShape::Triangle hktri;
 		infile >> hktri.m_a >> hktri.m_b >> hktri.m_c;
 		if (infile.eof() || infile.fail()) {
-			std::cout
-				<< "info: error while parsing triangles"
-				<< std::endl;
+			//std::cout
+			//	<< "info: error while parsing triangles"
+			//	<< std::endl;
 			return;
 		}
 		if (infile.fail())
@@ -139,7 +139,7 @@ void mopper(std::ifstream & infile) {
 	}
 
 
-	std::cout << "info: building mopp in progress" << std::endl;
+	//std::cout << "info: building mopp in progress" << std::endl;
 	hkpMoppCompilerInput mfr;
 	mfr.setAbsoluteFitToleranceOfAxisAlignedTriangles( hkVector4( 0.1f, 0.1f, 0.1f ) );
 	//mfr.setAbsoluteFitToleranceOfTriangles(0.1f);
@@ -147,32 +147,34 @@ void mopper(std::ifstream & infile) {
 	k_phkpMoppCode = buildCode(list, &mfr);
 
 	if (k_phkpMoppCode != NULL) {
-		std::cout << "info: building mopp finished" << std::endl;
-		std::cout
-			<< "info: mopp size is "
-			<< k_phkpMoppCode->m_data.getSize() << std::endl;
+		//std::cout << "info: building mopp finished" << std::endl;
+		//std::cout
+		//	<< "info: mopp size is "
+		//	<< k_phkpMoppCode->m_data.getSize() << std::endl;
 
 		// print mopp
 		std::cout
-			<< "origin: "
+			//<< "origin: "
 			<< k_phkpMoppCode->m_info.m_offset(0) << " "
 			<< k_phkpMoppCode->m_info.m_offset(1) << " "
 			<< k_phkpMoppCode->m_info.m_offset(2) << std::endl;
 		std::cout 
-			<< "scale: "
+			//<< "scale: "
 			<< k_phkpMoppCode->m_info.getScale(); // std::endl below
 		for (int i = 0; i < k_phkpMoppCode->m_data.getSize(); i++) {
-			if ((i & 0xf) == 0)
+			if ((i & 0xf) == 0) {
+				std::cout
+					<< std::endl;
+					//<< "code: ";
+			} else {
+				std::cout << " ";
+			}
 			std::cout
-				<< std::endl
-				<< "code:";
-			std::cout
-				<< " "
 				<< int(k_phkpMoppCode->m_data[i]);
 		}
 		std::cout << std::endl;
 	} else {
-		std::cout << "info: building mopp failed" << k_phkpMoppCode->m_data.getSize() << std::endl;
+		//std::cout << "info: building mopp failed" << k_phkpMoppCode->m_data.getSize() << std::endl;
 	}
 
 	// Deallocate shape
@@ -192,17 +194,17 @@ void mopper(std::ifstream & infile) {
 //int _tmain(int argc, _TCHAR* argv[])
 int main(int argc, char *argv[])
 {
-	std::cout
-		<< "Mopper. Copyright (c) 2008, NIF File Format Library and Tools" << std::endl
-		<< "All rights reserved. Type 'mopper.exe --license' for details." << std::endl
-		<< std::endl
-		<< "Mopper uses havok. "
-		<< "Copyright 1999-2008 Havok.com Inc. (and its Licensors)."
-		<< std::endl
-		<< "All Rights Reserved. See www.havok.com for details."
-		<< std::endl << std::endl;
-
 	if (argc != 2) {
+		std::cout
+			<< "Mopper. Copyright (c) 2008, NIF File Format Library and Tools" << std::endl
+			<< "All rights reserved. Type 'mopper.exe --license' for details." << std::endl
+			<< std::endl
+			<< "Mopper uses havok. "
+			<< "Copyright 1999-2008 Havok.com Inc. (and its Licensors)."
+			<< std::endl
+			<< "All Rights Reserved. See www.havok.com for details."
+			<< std::endl << std::endl;
+
 		std::cout <<
 "usage: mopper.exe <file>\n\n"
 "where <file> is a text file of the following format:\n"
@@ -219,6 +221,8 @@ int main(int argc, char *argv[])
 
 	if (std::strcmp(argv[1], "--license") == 0) {
 		std::cout <<
+"Mopper. Copyright (c) 2008, NIF File Format Library and Tools\n"
+"All rights reserved.\n\n"
 "Redistribution and use in source and binary forms, with or without\n"
 "modification, are permitted provided that the following conditions\n"
 "are met:\n"
@@ -244,7 +248,7 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 	
-	std::cout << "info: initializing havok" << std::endl;
+	//std::cout << "info: initializing havok" << std::endl;
 	// Initialize the base system including our memory system
 	hkThreadMemory* threadMemory = NULL;
 	char* stackBuffer = NULL;
@@ -261,7 +265,7 @@ int main(int argc, char *argv[])
 	// Call main program.
 	mopper(std::ifstream(argv[1], std::ifstream::in));
 
-	std::cout << "info: closing havok" << std::endl;
+	//std::cout << "info: closing havok" << std::endl;
 
 	// Deallocate stack area
 	if (threadMemory)
