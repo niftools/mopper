@@ -160,10 +160,12 @@ void mopper(std::ifstream & infile) {
 			<< k_phkpMoppCode->m_info.m_offset(2) << std::endl;
 		std::cout 
 			<< "scale: "
-			<< k_phkpMoppCode->m_info.getScale() << std::endl;
-		std::cout
-			<< "code:";
+			<< k_phkpMoppCode->m_info.getScale(); // std::endl below
 		for (int i = 0; i < k_phkpMoppCode->m_data.getSize(); i++) {
+			if ((i & 0xf) == 0)
+			std::cout
+				<< std::endl
+				<< "code:";
 			std::cout
 				<< " "
 				<< int(k_phkpMoppCode->m_data[i]);
