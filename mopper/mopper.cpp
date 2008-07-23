@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
 			<< std::endl << std::endl;
 
 		std::cout <<
-"usage: mopper.exe [<file>|--]\n\n"
+"usage: mopper.exe <file>|--\n\n"
 "where <file> (-- for standard input) is of the following format:\n"
 "<number of vertices>\n"
 "<vertex 1 x> <vertex 1 y> <vertex 1 z>\n"
