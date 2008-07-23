@@ -41,7 +41,10 @@ SetCompressor /SOLID lzma
 
 !include "MUI.nsh"
 
-!define VERSION "0.0.1"
+!define VERSIONMAJOR "1"
+!define VERSIONMINOR "0"
+!define VERSIONSERVICEPACK "0"
+!define VERSION "${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONSERVICEPACK}"
 
 Name "Mopper ${VERSION}"
 
@@ -178,12 +181,14 @@ Section
   File Release\mopper.exe
   File LICENSE.TXT
 
-  ; Write the installation path into the registry so other tools can find the mopper
-  WriteRegStr HKLM SOFTWARE\NifToolsMopper "Install_Dir" "$INSTDIR"
-
   ; Write the uninstall keys & uninstaller for Windows
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NifToolsMopper" "DisplayName" "NifTools Mopper (remove only)"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NifToolsMopper" "DisplayName" "Mopper (remove only)"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NifToolsMopper" "UninstallString" "$INSTDIR\uninstall.exe"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NifToolsMopper" "InstallLocation" "$INSTDIR" ; for other apps to find mopper
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NifToolsMopper" "VersionMajor" ${VERSIONMAJOR}
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NifToolsMopper" "VersionMinor" ${VERSIONMINOR}
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NifToolsMopper" "VersionServicePack" ${VERSIONSERVICEPACK}
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NifToolsMopper" "Publisher" "NifTools"
   SetOutPath $INSTDIR
   WriteUninstaller "uninstall.exe"
 
@@ -202,7 +207,6 @@ Section "Uninstall"
 
   ; remove registry keys
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NifToolsMopper"
-  DeleteRegKey HKLM "SOFTWARE\NifToolsMopper"
 
   ; remove program files and program directory
   Delete "$INSTDIR\*.*"
