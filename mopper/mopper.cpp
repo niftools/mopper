@@ -84,7 +84,7 @@ hkpMoppCode *buildCode(const hkpSimpleMeshShape * list, const hkpMoppCompilerInp
 	}
 }
 
-void mopper(std::ifstream & infile) {
+void mopper(std::istream & infile) {
 	hkpSimpleMeshShape * list = NULL;
 	hkpMoppCode* k_phkpMoppCode = NULL;
 
@@ -198,8 +198,8 @@ int main(int argc, char *argv[])
 			<< std::endl << std::endl;
 
 		std::cout <<
-"usage: mopper.exe <file>\n\n"
-"where <file> is a text file of the following format:\n"
+"usage: mopper.exe [<file>|--]\n\n"
+"where <file> (-- for standard input) is of the following format:\n"
 "<number of vertices>\n"
 "<vertex 1 x> <vertex 1 y> <vertex 1 z>\n"
 "<vertex 2 x> <vertex 2 y> <vertex 2 z>\n"
@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
 "THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n";
 		return 0;
 	}
-	
+
 	//std::cout << "info: initializing havok" << std::endl;
 	// Initialize the base system including our memory system
 	hkThreadMemory* threadMemory = NULL;
@@ -255,7 +255,11 @@ int main(int argc, char *argv[])
 	hkThreadMemory::getInstance().setStackArea( stackBuffer, stackSize);
 
 	// Call main program.
-	mopper(std::ifstream(argv[1], std::ifstream::in));
+	if (std::strcmp(argv[1], "--") == 0) {
+		mopper(std::cin);
+	} else {
+		mopper(std::ifstream(argv[1], std::ifstream::in));
+	}
 
 	//std::cout << "info: closing havok" << std::endl;
 
