@@ -93,8 +93,8 @@ void mopper(std::ifstream & infile) {
 	hkArray<hkVector4> &vertices = list->m_vertices;
 	hkArray<hkpSimpleMeshShape::Triangle> &triangles = list->m_triangles;
 
-	vertices.setSize( 0 );
-	triangles.setSize( 0 );
+	vertices.setSize(0);
+	triangles.setSize(0);
 
 	int numvertices;
 	infile >> numvertices;
@@ -154,25 +154,17 @@ void mopper(std::ifstream & infile) {
 
 		// print mopp
 		std::cout
-			//<< "origin: "
 			<< k_phkpMoppCode->m_info.m_offset(0) << " "
 			<< k_phkpMoppCode->m_info.m_offset(1) << " "
 			<< k_phkpMoppCode->m_info.m_offset(2) << std::endl;
 		std::cout 
-			//<< "scale: "
-			<< k_phkpMoppCode->m_info.getScale(); // std::endl below
+			<< k_phkpMoppCode->m_info.getScale() << std::endl;
+		std::cout << k_phkpMoppCode->m_data.getSize() << std::endl;
 		for (int i = 0; i < k_phkpMoppCode->m_data.getSize(); i++) {
-			if ((i & 0xf) == 0) {
-				std::cout
-					<< std::endl;
-					//<< "code: ";
-			} else {
-				std::cout << " ";
-			}
 			std::cout
-				<< int(k_phkpMoppCode->m_data[i]);
+				<< int(k_phkpMoppCode->m_data[i])
+				<< std::endl;
 		}
-		std::cout << std::endl;
 	} else {
 		//std::cout << "info: building mopp failed" << k_phkpMoppCode->m_data.getSize() << std::endl;
 	}
