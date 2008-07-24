@@ -153,12 +153,10 @@ void mopper(std::istream & infile) {
 		//	<< k_phkpMoppCode->m_data.getSize() << std::endl;
 
 		// print mopp
-		std::cout
-			<< k_phkpMoppCode->m_info.m_offset(0) << " "
-			<< k_phkpMoppCode->m_info.m_offset(1) << " "
-			<< k_phkpMoppCode->m_info.m_offset(2) << std::endl;
-		std::cout 
-			<< k_phkpMoppCode->m_info.getScale() << std::endl;
+		std::cout << k_phkpMoppCode->m_info.m_offset(0) << std::endl;
+		std::cout << k_phkpMoppCode->m_info.m_offset(1) << std::endl;
+		std::cout << k_phkpMoppCode->m_info.m_offset(2) << std::endl;
+		std::cout << k_phkpMoppCode->m_info.getScale() << std::endl;
 		std::cout << k_phkpMoppCode->m_data.getSize() << std::endl;
 		for (int i = 0; i < k_phkpMoppCode->m_data.getSize(); i++) {
 			std::cout
@@ -186,7 +184,7 @@ void mopper(std::istream & infile) {
 //int _tmain(int argc, _TCHAR* argv[])
 int main(int argc, char *argv[])
 {
-	if (argc != 2) {
+	if ((argc != 2) || (std::strcmp(argv[1], "--version") == 0)) {
 		std::cout
 			<< "Mopper. Copyright (c) 2008, NIF File Format Library and Tools" << std::endl
 			<< "All rights reserved. Type 'mopper.exe --license' for details." << std::endl
@@ -196,9 +194,11 @@ int main(int argc, char *argv[])
 			<< std::endl
 			<< "All Rights Reserved. See www.havok.com for details."
 			<< std::endl << std::endl;
+	}
 
+	if (argc != 2) {
 		std::cout <<
-"usage: mopper.exe <file>|--\n\n"
+"usage: mopper.exe [<file>|--|--version|--license]\n\n"
 "where <file> (-- for standard input) is of the following format:\n"
 "<number of vertices>\n"
 "<vertex 1 x> <vertex 1 y> <vertex 1 z>\n"
