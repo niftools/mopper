@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
 {
 	if (argc != 2) {
 		std::cout
-			<< "Mopper. Copyright (c) 2008, NIF File Format Library and Tools" << std::endl
+			<< "Mopper. Copyright (c) 2008, NIF File Format Library and Tools." << std::endl
 			<< "All rights reserved." << std::endl
 			<< std::endl
 			<< "Options:" << std::endl
