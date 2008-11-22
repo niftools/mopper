@@ -159,6 +159,8 @@ void mopper(std::istream & infile) {
 	mfr.setAbsoluteFitToleranceOfTriangles(0.1945f);
 	mfr.setAbsoluteFitToleranceOfInternalNodes(0.3f);
 	k_phkpMoppCode = buildCode(list, &mfr);
+	hkpMoppBvTreeShape bvtree(list, k_phkpMoppCode);
+	list->computeWeldingInfo(&bvtree, hkpWeldingUtility::WELDING_TYPE_ANTICLOCKWISE);
 
 	if (k_phkpMoppCode != NULL) {
 		//std::cout << "info: building mopp finished" << std::endl;
