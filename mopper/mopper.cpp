@@ -92,9 +92,11 @@ void mopper(std::istream & infile) {
 	list = new hkpSimpleMeshShape( 0.01f );
 	hkArray<hkVector4> &vertices = list->m_vertices;
 	hkArray<hkpSimpleMeshShape::Triangle> &triangles = list->m_triangles;
+	hkArray<hkUint8> &materialindices = list->m_materialIndices;
 
 	vertices.setSize(0);
 	triangles.setSize(0);
+	materialindices.setSize(0);
 
 	int numvertices;
 	infile >> numvertices;
@@ -128,8 +130,6 @@ void mopper(std::istream & infile) {
 			//	<< std::endl;
 			return;
 		}
-		if (infile.fail())
-			break;
 		//std::cout
 		//	<< "info: adding triangle "
 		//	<< hktri.m_a << ", "
@@ -138,12 +138,26 @@ void mopper(std::istream & infile) {
 		triangles.pushBack( hktri );
 	}
 
+	int nummaterialindices;
+	infile >> nummaterialindices;
+	//std::cout << "info: " << nummaterialindices << " material indices" << std::endl;
+	for (int i = 0; i < nummaterialindices; i++) {
+		hkUint8 matindex;
+		infile >> matindex;
+		if (infile.eof() || infile.fail()) {
+			//std::cout
+			//	<< "info: error while parsing material indices"
+			//	<< std::endl;
+			return;
+		}
+		materialindices.pushBack( matindex );
+	}
 
 	//std::cout << "info: building mopp in progress" << std::endl;
 	hkpMoppCompilerInput mfr;
-	mfr.setAbsoluteFitToleranceOfAxisAlignedTriangles( hkVector4( 0.1f, 0.1f, 0.1f ) );
-	//mfr.setAbsoluteFitToleranceOfTriangles(0.1f);
-	//mfr.setAbsoluteFitToleranceOfInternalNodes(0.0001f);
+	mfr.setAbsoluteFitToleranceOfAxisAlignedTriangles( hkVector4( 0.1945f, 0.1945f, 0.1945f ) );
+	mfr.setAbsoluteFitToleranceOfTriangles(0.1945f);
+	mfr.setAbsoluteFitToleranceOfInternalNodes(0.3f);
 	k_phkpMoppCode = buildCode(list, &mfr);
 
 	if (k_phkpMoppCode != NULL) {
@@ -162,6 +176,13 @@ void mopper(std::istream & infile) {
 		for (int i = 0; i < k_phkpMoppCode->m_data.getSize(); i++) {
 			std::cout
 				<< int(k_phkpMoppCode->m_data[i])
+				<< std::endl;
+		}
+		// print welding info
+		std::cout << triangles.getSize() << std::endl;
+		for (int i = 0; i < triangles.getSize(); i++) {
+			std::cout
+				<< triangles[i].m_weldingInfo
 				<< std::endl;
 		}
 	} else {
