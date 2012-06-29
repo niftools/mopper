@@ -43,8 +43,10 @@
 // Math and base include
 #include <Common/Base/hkBase.h>
 #include <Common/Base/System/hkBaseSystem.h>
-#include <Common/Base/Memory/hkThreadMemory.h>
-#include <Common/Base/Memory/Memory/Pool/hkPoolMemory.h>
+//#include <Common/Base/Memory/Allocator/Thread/hkThreadMemory.h>
+//#include <Common/Base/Memory/Memory/Pool/hkPoolMemory.h>
+#include <Common/Base/Memory/System/Util/hkMemoryInitUtil.h>
+#include <Common/Base/Memory/Allocator/Malloc/hkMallocAllocator.h>
 #include <Common/Base/System/Error/hkDefaultError.h>
 #include <Common/Base/Monitor/hkMonitorStream.h>
 
@@ -59,7 +61,18 @@
 #include <Physics/Collide/Shape/Convex/Capsule/hkpCapsuleShape.h>
 #include <Physics/Collide/Shape/Compound/Tree/Mopp/hkpMoppBvTreeShape.h>
 #include <Physics/Collide/Shape/Compound/Tree/Mopp/hkpMoppUtility.h>
+#include <Physics/Collide/Util/Welding/hkpMeshWeldingUtility.h>
 #include <Physics/Internal/Collide/Mopp/Code/hkpMoppCode.h>
+
+#include <Common/Base/keycode.cxx>
+
+#ifdef HK_FEATURE_PRODUCT_ANIMATION
+#undef HK_FEATURE_PRODUCT_ANIMATION
+#endif
+#ifndef HK_EXCLUDE_LIBRARY_hkgpConvexDecomposition
+#define HK_EXCLUDE_LIBRARY_hkgpConvexDecomposition
+#endif
+#include <Common/Base/Config/hkProductFeatures.cxx> 
 
 #pragma comment(lib, "hkBase.lib")
 #pragma comment(lib, "hkSerialize.lib")
@@ -160,7 +173,7 @@ void mopper(std::istream & infile) {
 	mfr.setAbsoluteFitToleranceOfInternalNodes(0.3f);
 	k_phkpMoppCode = buildCode(list, &mfr);
 	hkpMoppBvTreeShape bvtree(list, k_phkpMoppCode);
-	list->computeWeldingInfo(&bvtree, hkpWeldingUtility::WELDING_TYPE_ANTICLOCKWISE);
+	hkpMeshWeldingUtility::computeWeldingInfo(list, &bvtree, hkpWeldingUtility::WELDING_TYPE_ANTICLOCKWISE);
 
 	if (k_phkpMoppCode != NULL) {
 		//std::cout << "info: building mopp finished" << std::endl;
@@ -271,17 +284,8 @@ int main(int argc, char *argv[])
 
 	//std::cout << "info: initializing havok" << std::endl;
 	// Initialize the base system including our memory system
-	hkThreadMemory* threadMemory = NULL;
-	char* stackBuffer = NULL;
-	hkPoolMemory* memoryManager = new hkPoolMemory();
-	threadMemory = new hkThreadMemory(memoryManager, 16);
-	hkBaseSystem::init( memoryManager, threadMemory, errorReport );
-	memoryManager->removeReference();
-
-	// We now initialize the stack area to 100k (fast temporary memory to be used by the engine).
-	int stackSize = 0x100000;
-	stackBuffer = hkAllocate<char>( stackSize, HK_MEMORY_CLASS_BASE);
-	hkThreadMemory::getInstance().setStackArea( stackBuffer, stackSize);
+	hkMemoryRouter*		pMemoryRouter(hkMemoryInitUtil::initDefault(hkMallocAllocator::m_defaultMallocAllocator, hkMemorySystem::FrameInfo(500000)));
+	hkBaseSystem::init(pMemoryRouter, errorReport);
 
 	// Call main program.
 	if (std::strcmp(argv[1], "--") == 0) {
@@ -291,17 +295,6 @@ int main(int argc, char *argv[])
 	}
 
 	//std::cout << "info: closing havok" << std::endl;
-
-	// Deallocate stack area
-	if (threadMemory)
-	{
-		threadMemory->setStackArea(0, 0);
-		hkDeallocate(stackBuffer);
-
-		threadMemory->removeReference();
-		threadMemory = NULL;
-		stackBuffer = NULL;
-	}
 
 	// Quit base system
 	hkBaseSystem::quit();
