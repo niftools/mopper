@@ -1,6 +1,6 @@
 // ***** BEGIN LICENSE BLOCK *****
 //
-// Copyright (c) 2006-2008, NIF File Format Library and Tools.
+// Copyright (c) 2006-2012, NIF File Format Library and Tools.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -43,8 +43,8 @@
 // Math and base include
 #include <Common/Base/hkBase.h>
 #include <Common/Base/System/hkBaseSystem.h>
-#include <Common/Base/Memory/hkThreadMemory.h>
-#include <Common/Base/Memory/Memory/Pool/hkPoolMemory.h>
+#include <Common/Base/Memory/System/Util/hkMemoryInitUtil.h>
+#include <Common/Base/Memory/Allocator/Malloc/hkMallocAllocator.h>
 #include <Common/Base/System/Error/hkDefaultError.h>
 #include <Common/Base/Monitor/hkMonitorStream.h>
 
@@ -59,7 +59,21 @@
 #include <Physics/Collide/Shape/Convex/Capsule/hkpCapsuleShape.h>
 #include <Physics/Collide/Shape/Compound/Tree/Mopp/hkpMoppBvTreeShape.h>
 #include <Physics/Collide/Shape/Compound/Tree/Mopp/hkpMoppUtility.h>
+#include <Physics/Collide/Util/Welding/hkpMeshWeldingUtility.h>
 #include <Physics/Internal/Collide/Mopp/Code/hkpMoppCode.h>
+
+#include <Physics/Collide/Shape/Compound/Collection/CompressedMesh/hkpCompressedMeshShapeBuilder.h>
+
+
+#include <Common/Base/keycode.cxx>
+
+#ifdef HK_FEATURE_PRODUCT_ANIMATION
+#undef HK_FEATURE_PRODUCT_ANIMATION
+#endif
+#ifndef HK_EXCLUDE_LIBRARY_hkgpConvexDecomposition
+#define HK_EXCLUDE_LIBRARY_hkgpConvexDecomposition
+#endif
+#include <Common/Base/Config/hkProductFeatures.cxx> 
 
 #pragma comment(lib, "hkBase.lib")
 #pragma comment(lib, "hkSerialize.lib")
@@ -68,15 +82,18 @@
 #pragma comment(lib, "hkpCollide.lib")
 #pragma comment(lib, "hkpConstraintSolver.lib")
 
+/*-------------------------------------------------------------------------*/
 static void HK_CALL errorReport(const char* msg, void*)
 {
 	std::cout << msg;
 }
 
-hkpMoppCode *buildCode(const hkpSimpleMeshShape * list, const hkpMoppCompilerInput * mfr) {
+/*-------------------------------------------------------------------------*/
+hkpMoppCode* buildCodeSimpleMesh(const hkpSimpleMeshShape *mesh, const hkpMoppCompilerInput *mfr)
+{
 	__try
 	{
-		return hkpMoppUtility::buildCode(list, *mfr);
+		return hkpMoppUtility::buildCode(mesh, *mfr);
 	}
 	__except(EXCEPTION_EXECUTE_HANDLER)
 	{
@@ -84,90 +101,110 @@ hkpMoppCode *buildCode(const hkpSimpleMeshShape * list, const hkpMoppCompilerInp
 	}
 }
 
-void mopper(std::istream & infile) {
-	hkpSimpleMeshShape * list = NULL;
-	hkpMoppCode* k_phkpMoppCode = NULL;
+/*-------------------------------------------------------------------------*/
+hkpMoppCode* buildCodeCompressedMesh(const hkpCompressedMeshShape* mesh, const hkpMoppCompilerInput *mfr)
+{
+	__try
+	{
+		return hkpMoppUtility::buildCode(mesh, *mfr);
+	}
+	__except(EXCEPTION_EXECUTE_HANDLER)
+	{
+		return NULL;
+	}
+}
 
-	//std::cout << "info: building mesh" << std::endl;
-	list = new hkpSimpleMeshShape( 0.01f );
-	hkArray<hkVector4> &vertices = list->m_vertices;
-	hkArray<hkpSimpleMeshShape::Triangle> &triangles = list->m_triangles;
-	hkArray<hkUint8> &materialindices = list->m_materialIndices;
+/*-------------------------------------------------------------------------*/
+void mopperSimpleMesh(std::istream & infile)
+{
+	hkpMoppCode*							k_phkpMoppCode    (NULL);
+	hkpSimpleMeshShape*						list              (new hkpSimpleMeshShape(0.01f));
+	hkArray<hkVector4>&						vertices          (list->m_vertices);
+	hkArray<hkpSimpleMeshShape::Triangle>&	triangles         (list->m_triangles);
+	hkArray<hkUint8>&						materialindices   (list->m_materialIndices);
+	hkpMoppCompilerInput					mfr;
+	float									x                 (0.0);
+	float									y                 (0.0);
+	float									z                 (0.0);
+	int										numvertices       (0);
+	int										numtriangles;     (0);
+	int										nummaterialindices(0);
 
+	//  reset size of vectors
 	vertices.setSize(0);
 	triangles.setSize(0);
 	materialindices.setSize(0);
 
-	int numvertices;
+	//  read number of vertices
 	infile >> numvertices;
-	//std::cout << "info: " << numvertices << " vertices" << std::endl;
-	for (int i = 0; i < numvertices; i++) {
-		float x, y, z;
+
+	//  read each vertex
+	for (int i(0); i < numvertices; ++i)
+	{
+		//  read coordinates
 		infile >> x >> y >> z;
-		if (infile.eof() || infile.fail()) {
-			//std::cout
-			//	<< "info: error while parsing vertices"
-			//	<< std::endl;
-			return;
-		}
-		//std::cout
-		//	<< "info: adding vertex "
-		//	<< x << ", "
-		//	<< y << ", "
-		//	<< z << std::endl;
-		vertices.pushBack( hkVector4(x, y, z) );
+
+		//  early break on eof or error
+		if (infile.eof() || infile.fail())		return;
+
+		//  add vertex to vector
+		vertices.pushBack(hkVector4(x, y, z));
 	}
 
-	int numtriangles;
+	//  read number of triangles
 	infile >> numtriangles;
-	//std::cout << "info: " << numtriangles << " triangles" << std::endl;
-	for (int i = 0; i < numtriangles; i++) {
-		hkpSimpleMeshShape::Triangle hktri;
+
+	//  read each triangle
+	for (int i(0); i < numtriangles; ++i)
+	{
+		hkpSimpleMeshShape::Triangle	hktri;
+
+		//  read vertex indices
 		infile >> hktri.m_a >> hktri.m_b >> hktri.m_c;
-		if (infile.eof() || infile.fail()) {
-			//std::cout
-			//	<< "info: error while parsing triangles"
-			//	<< std::endl;
-			return;
-		}
-		//std::cout
-		//	<< "info: adding triangle "
-		//	<< hktri.m_a << ", "
-		//	<< hktri.m_b << ", "
-		//	<< hktri.m_c << std::endl;
-		triangles.pushBack( hktri );
+
+		//  early break on eof or error
+		if (infile.eof() || infile.fail())		return;
+
+		//  add triangle to vector
+		triangles.pushBack(hktri);
 	}
 
-	int nummaterialindices;
+	//  read number of material indices
 	infile >> nummaterialindices;
-	//std::cout << "info: " << nummaterialindices << " material indices" << std::endl;
-	for (int i = 0; i < nummaterialindices; i++) {
-		hkUint8 matindex;
+
+	//  read each material index
+	for (int i(0); i < nummaterialindices; ++i)
+	{
+		hkUint8		matindex;
+
+		//  read index
 		infile >> matindex;
-		if (infile.eof() || infile.fail()) {
-			//std::cout
-			//	<< "info: error while parsing material indices"
-			//	<< std::endl;
-			return;
-		}
-		materialindices.pushBack( matindex );
+
+		//  early break on eof or error
+		if (infile.eof() || infile.fail())		return;
+
+		//  add material index to vector
+		materialindices.pushBack(matindex);
 	}
 
-	//std::cout << "info: building mopp in progress" << std::endl;
-	hkpMoppCompilerInput mfr;
+	//  create shape and compute welding
+	//  initialize MoppInfo
 	mfr.setAbsoluteFitToleranceOfAxisAlignedTriangles( hkVector4( 0.1945f, 0.1945f, 0.1945f ) );
 	mfr.setAbsoluteFitToleranceOfTriangles(0.1945f);
 	mfr.setAbsoluteFitToleranceOfInternalNodes(0.3f);
-	k_phkpMoppCode = buildCode(list, &mfr);
-	hkpMoppBvTreeShape bvtree(list, k_phkpMoppCode);
-	list->computeWeldingInfo(&bvtree, hkpWeldingUtility::WELDING_TYPE_ANTICLOCKWISE);
 
-	if (k_phkpMoppCode != NULL) {
-		//std::cout << "info: building mopp finished" << std::endl;
-		//std::cout
-		//	<< "info: mopp size is "
-		//	<< k_phkpMoppCode->m_data.getSize() << std::endl;
+	//  build MoppCode
+	k_phkpMoppCode = buildCodeSimpleMesh(list, &mfr);
 
+	//  create pseudo shape
+	hkpMoppBvTreeShape	bvtree(list, k_phkpMoppCode);
+
+	//  compute welding info
+	hkpMeshWeldingUtility::computeWeldingInfo(list, &bvtree, hkpWeldingUtility::WELDING_TYPE_ANTICLOCKWISE);
+
+	//  return values in case of existing MoppCode
+	if (k_phkpMoppCode != NULL)
+	{
 		// print mopp
 		std::cout.precision(16);
 		std::cout << k_phkpMoppCode->m_info.m_offset(0) << std::endl;
@@ -187,12 +224,11 @@ void mopper(std::istream & infile) {
 				<< triangles[i].m_weldingInfo
 				<< std::endl;
 		}
-	} else {
-		//std::cout << "info: building mopp failed" << k_phkpMoppCode->m_data.getSize() << std::endl;
-	}
+	}  //  if (k_phkpMoppCode != NULL)
 
 	// Deallocate shape
-	if (list) {
+	if (list)
+	{
 		list->removeReference();
 		list = NULL;
 	}
@@ -205,12 +241,232 @@ void mopper(std::istream & infile) {
 	}
 }
 
+/*-------------------------------------------------------------------------*/
+void mopperCompressedMesh(std::istream & infile)
+{
+	hkpCompressedMeshShape*			pCompMesh    (NULL);
+	hkpMoppCode*					pMoppCode    (NULL);
+	hkpCompressedMeshShapeBuilder	shapeBuilder;
+	hkpMoppCompilerInput			mci;
+	float							x            (0);
+	float							y            (0);
+	float							z            (0);
+	int								numGeometries(0);
+	int								numVertices  (0);
+	int								numTriangles (0);
+	int								subPartId    (0);
+
+	//  initialize shape Builder
+	shapeBuilder.m_stripperPasses = 5000;
+
+	//  create compressedMeshShape
+	pCompMesh = shapeBuilder.createMeshShape(0.001f, hkpCompressedMeshShape::MATERIAL_SINGLE_VALUE_PER_CHUNK);
+
+	//  read number of geometries
+	infile >> numGeometries;
+
+	//  read geometries
+	for (int idxGeo(0); idxGeo < numGeometries; ++idxGeo)
+	{
+		hkGeometry						tGeo;
+		hkArray<hkVector4>&				vertices (tGeo.m_vertices);
+		hkArray<hkGeometry::Triangle>&	triangles(tGeo.m_triangles);
+
+		//  reset sizes
+		vertices.clear();
+		triangles.clear();
+
+		//  read number of vertices
+		infile >> numVertices;
+
+		//  read each vertex
+		for (int i(0); i < numVertices; ++i)
+		{
+			//  read coordinates
+			infile >> x >> y >> z;
+
+			//  early break on eof or error
+			if (infile.eof() || infile.fail())		return;
+
+			//  add vertex to vector
+			vertices.pushBack(hkVector4(x, y, z));
+		}
+
+		//  read number of triangles
+		infile >> numTriangles;
+
+		//  read each triangle
+		for (int i(0); i < numTriangles; ++i)
+		{
+			hkGeometry::Triangle	triangle;
+
+			//  read vertex indices
+			infile >> triangle.m_a >> triangle.m_b >> triangle.m_c;
+
+			//  early break on eof or error
+			if (infile.eof() || infile.fail())		return;
+
+			//  add vertex to vector
+			triangles.pushBack(triangle);
+		}
+
+		//  material indices later on
+
+
+		//  add geometry to CompressedMesh
+		subPartId = shapeBuilder.beginSubpart(pCompMesh);
+		shapeBuilder.addGeometry(tGeo, hkMatrix4::getIdentity(), pCompMesh);
+		shapeBuilder.endSubpart (pCompMesh);
+		shapeBuilder.addInstance(subPartId, hkMatrix4::getIdentity(), pCompMesh);
+
+	}  //  for (int idxGeo(0); idxGeo < numGeometries; ++idxGeo)
+
+	//  create shape and compute welding
+	//  initialize MoppInfo
+	mci.m_enableChunkSubdivision = true;
+
+	//  build MoppCode
+	pMoppCode = buildCodeCompressedMesh(pCompMesh, &mci);
+
+	//  create pseudo shape
+	hkpMoppBvTreeShape	bvtree(pCompMesh, pMoppCode);
+
+	//  compute welding info
+	hkpMeshWeldingUtility::computeWeldingInfo(pCompMesh, &bvtree, hkpWeldingUtility::WELDING_TYPE_TWO_SIDED);
+
+	if ((pCompMesh != NULL) && (pMoppCode != NULL))
+	{
+		//  bhkMoppBvTree
+		//  print mopp
+		std::cout.precision(16);
+		std::cout << pMoppCode->m_info.m_offset(0) << std::endl;
+		std::cout << pMoppCode->m_info.m_offset(1) << std::endl;
+		std::cout << pMoppCode->m_info.m_offset(2) << std::endl;
+		std::cout << pMoppCode->m_info.getScale() << std::endl;
+		std::cout << pMoppCode->m_data.getSize() << std::endl;
+
+		//  print mopp code
+		std::cout << int(pMoppCode->m_data[pMoppCode->m_data.getSize() - 1]) << std::endl;
+		for (int i(0); i < (pMoppCode->m_data.getSize() - 1); ++i)
+		{
+			std::cout << int(pMoppCode->m_data[i]) << std::endl;
+		}
+
+		//  bhkCompressedMeshShapeData
+		//  print boundings
+		std::cout << pCompMesh->m_bounds.m_min(0) << std::endl;
+		std::cout << pCompMesh->m_bounds.m_min(1) << std::endl;
+		std::cout << pCompMesh->m_bounds.m_min(2) << std::endl;
+		std::cout << pCompMesh->m_bounds.m_min(3) << std::endl;
+		std::cout << pCompMesh->m_bounds.m_max(0) << std::endl;
+		std::cout << pCompMesh->m_bounds.m_max(1) << std::endl;
+		std::cout << pCompMesh->m_bounds.m_max(2) << std::endl;
+		std::cout << pCompMesh->m_bounds.m_max(3) << std::endl;
+
+		//  print bigVerts
+		std::cout << pCompMesh->m_bigVertices.getSize() << std::endl;
+		for (int i(0); i < pCompMesh->m_bigVertices.getSize(); ++i)
+		{
+			std::cout << pCompMesh->m_bigVertices[i](0) << std::endl;
+			std::cout << pCompMesh->m_bigVertices[i](1) << std::endl;
+			std::cout << pCompMesh->m_bigVertices[i](2) << std::endl;
+			std::cout << pCompMesh->m_bigVertices[i](3) << std::endl;
+		}
+
+		//  print bigTriangles
+		std::cout << pCompMesh->m_bigTriangles.getSize() << std::endl;
+		for (int i(0); i < pCompMesh->m_bigTriangles.getSize(); ++i)
+		{
+			std::cout << pCompMesh->m_bigTriangles[i].m_a << std::endl;
+			std::cout << pCompMesh->m_bigTriangles[i].m_b << std::endl;
+			std::cout << pCompMesh->m_bigTriangles[i].m_c << std::endl;
+			std::cout << pCompMesh->m_bigTriangles[i].m_material << std::endl;
+			std::cout << pCompMesh->m_bigTriangles[i].m_weldingInfo << std::endl;
+		}
+
+		//  print transformations
+		std::cout << pCompMesh->m_transforms.getSize() << std::endl;
+		for (int i(0); i < pCompMesh->m_transforms.getSize(); ++i)
+		{
+			std::cout << pCompMesh->m_transforms[i].m_translation(0) << std::endl;
+			std::cout << pCompMesh->m_transforms[i].m_translation(1) << std::endl;
+			std::cout << pCompMesh->m_transforms[i].m_translation(2) << std::endl;
+			std::cout << pCompMesh->m_transforms[i].m_translation(3) << std::endl;
+			std::cout << pCompMesh->m_transforms[i].m_rotation(0) << std::endl;
+			std::cout << pCompMesh->m_transforms[i].m_rotation(1) << std::endl;
+			std::cout << pCompMesh->m_transforms[i].m_rotation(2) << std::endl;
+			std::cout << pCompMesh->m_transforms[i].m_rotation(3) << std::endl;
+		}
+
+		//  print chunks
+		std::cout << pCompMesh->m_chunks.getSize() << std::endl;
+
+		//  for each chunk
+		for (int i(0); i < pCompMesh->m_chunks.getSize(); ++i)
+		{
+			//  print translation
+			std::cout << pCompMesh->m_chunks[i].m_offset(0) << std::endl;
+			std::cout << pCompMesh->m_chunks[i].m_offset(1) << std::endl;
+			std::cout << pCompMesh->m_chunks[i].m_offset(2) << std::endl;
+			std::cout << pCompMesh->m_chunks[i].m_offset(3) << std::endl;
+
+			//  print forced flags
+			std::cout << pCompMesh->m_chunks[i].m_materialInfo << std::endl;
+			std::cout << 65535 << std::endl;
+			std::cout << pCompMesh->m_chunks[i].m_transformIndex << std::endl;
+
+			//  print vertices
+			std::cout << pCompMesh->m_chunks[i].m_vertices.getSize() << std::endl;
+			for (int t(0); t < pCompMesh->m_chunks[i].m_vertices.getSize(); ++t)
+			{
+				std::cout << pCompMesh->m_chunks[i].m_vertices[t] << std::endl;
+			}
+
+			//  print indices
+			std::cout << pCompMesh->m_chunks[i].m_indices.getSize() << std::endl;
+			for (int t(0); t < pCompMesh->m_chunks[i].m_indices.getSize(); ++t)
+			{
+				std::cout << pCompMesh->m_chunks[i].m_indices[t] << std::endl;
+			}
+
+			//  print strips
+			std::cout << pCompMesh->m_chunks[i].m_stripLengths.getSize() << std::endl;
+			for (int t(0); t < pCompMesh->m_chunks[i].m_stripLengths.getSize(); ++t)
+			{
+				std::cout << pCompMesh->m_chunks[i].m_stripLengths[t] << std::endl;
+			}
+
+			//  print welding info
+			std::cout << pCompMesh->m_chunks[i].m_weldingInfo.getSize() << std::endl;
+			for (int t(0); t < pCompMesh->m_chunks[i].m_weldingInfo.getSize(); ++t)
+			{
+				std::cout << pCompMesh->m_chunks[i].m_weldingInfo[t] << std::endl;
+			}
+		}  //  for (int i(0); i < pCompMesh->m_chunks.getSize(); ++i)
+	}  //  if ((pCompMesh != NULL) && (pMoppCode != NULL))
+
+	// Deallocate shape
+	if (pCompMesh)
+	{
+		pCompMesh->removeReference();
+		pCompMesh = NULL;
+	}
+
+	// Deallocate mopp code
+	if (pMoppCode)
+	{
+		pMoppCode->removeReference();
+		pMoppCode = NULL;
+	}
+}
+
+/*-------------------------------------------------------------------------*/
 //int _tmain(int argc, _TCHAR* argv[])
 int main(int argc, char *argv[])
 {
-	if (argc != 2) {
+	if (argc < 2) {
 		std::cout
-			<< "Mopper. Copyright (c) 2008, NIF File Format Library and Tools." << std::endl
+			<< "Mopper. Copyright (c) 2008-2012, NIF File Format Library and Tools." << std::endl
 			<< "All rights reserved." << std::endl
 			<< std::endl
 			<< "Options:" << std::endl
@@ -218,7 +474,7 @@ int main(int argc, char *argv[])
 			<< "  --license   for licensing details" << std::endl
 			<< std::endl
 			<< "Mopper uses havok. "
-			<< "Copyright 1999-2008 Havok.com Inc. (and its Licensors)."
+			<< "Copyright 1999-2012 Havok.com Inc. (and its Licensors)."
 			<< std::endl
 			<< "All Rights Reserved. See www.havok.com for details."
 			<< std::endl << std::endl;
@@ -227,22 +483,51 @@ int main(int argc, char *argv[])
 
 	if (std::strcmp(argv[1], "--help") == 0) {
 		std::cout <<
-"usage: mopper.exe [<file>|--]\n\n"
-"where <file> (-- for standard input) is of the following format:\n"
+"usage: mopper.exe [command] [<file>|--]\n\n"
+"command:\n"
+"  -msm\t: create MOPP data for bhkSimpleMeshShape\n"
+"  -ccm\t: create complete bhkCompressedMeshShape\n\n"
+"where <file> (-- for standard input) is of the following format\n for bhkSimpleMeshShape:\n"
 "<number of vertices>\n"
 "<vertex 1 x> <vertex 1 y> <vertex 1 z>\n"
 "<vertex 2 x> <vertex 2 y> <vertex 2 z>\n"
 "...\n"
 "<number of triangles>\n"
 "<triangle 1 index 0> <triangle 1 index 1> <triangle 1 index 2>\n"
-"<triangle 1 index 0> <triangle 2 index 1> <triangle 2 index 2>\n"
+"<triangle 2 index 0> <triangle 2 index 1> <triangle 2 index 2>\n"
+"...\n\n"
+"where <file> (-- for standard input) is of the following format\n for bhkComplexMeshShape:\n"
+"<number of geometries>\n"
+"<number of vertices geometry 1>\n"
+"<vertex 1 x> <vertex 1 y> <vertex 1 z>\n"
+"<vertex 2 x> <vertex 2 y> <vertex 2 z>\n"
+"...\n"
+"<number of triangles geometry 1>\n"
+"<triangle 1 index 0> <triangle 1 index 1> <triangle 1 index 2>\n"
+"<triangle 2 index 0> <triangle 2 index 1> <triangle 2 index 2>\n"
+"...\n"
+"<number of vertices geometry 2>\n"
+"<vertex 1 x> <vertex 1 y> <vertex 1 z>\n"
+"<vertex 2 x> <vertex 2 y> <vertex 2 z>\n"
+"...\n"
+"<number of triangles geometry 2>\n"
+"<triangle 1 index 0> <triangle 1 index 1> <triangle 1 index 2>\n"
+"<triangle 2 index 0> <triangle 2 index 1> <triangle 2 index 2>\n"
+"...\n"
+"<number of vertices geometry n>\n"
+"<vertex 1 x> <vertex 1 y> <vertex 1 z>\n"
+"<vertex 2 x> <vertex 2 y> <vertex 2 z>\n"
+"...\n"
+"<number of triangles geometry n>\n"
+"<triangle 1 index 0> <triangle 1 index 1> <triangle 1 index 2>\n"
+"<triangle 2 index 0> <triangle 2 index 1> <triangle 2 index 2>\n"
 "...\n\n";
 		return 0;
 	}
 
 	if (std::strcmp(argv[1], "--license") == 0) {
 		std::cout <<
-"Mopper. Copyright (c) 2008, NIF File Format Library and Tools\n"
+"Mopper. Copyright (c) 2008-2012, NIF File Format Library and Tools\n"
 "All rights reserved.\n\n"
 "Redistribution and use in source and binary forms, with or without\n"
 "modification, are permitted provided that the following conditions\n"
@@ -269,38 +554,40 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	//std::cout << "info: initializing havok" << std::endl;
 	// Initialize the base system including our memory system
-	hkThreadMemory* threadMemory = NULL;
-	char* stackBuffer = NULL;
-	hkPoolMemory* memoryManager = new hkPoolMemory();
-	threadMemory = new hkThreadMemory(memoryManager, 16);
-	hkBaseSystem::init( memoryManager, threadMemory, errorReport );
-	memoryManager->removeReference();
-
-	// We now initialize the stack area to 100k (fast temporary memory to be used by the engine).
-	int stackSize = 0x100000;
-	stackBuffer = hkAllocate<char>( stackSize, HK_MEMORY_CLASS_BASE);
-	hkThreadMemory::getInstance().setStackArea( stackBuffer, stackSize);
+	hkMemoryRouter*		pMemoryRouter(hkMemoryInitUtil::initDefault(hkMallocAllocator::m_defaultMallocAllocator, hkMemorySystem::FrameInfo(500000)));
+	hkBaseSystem::init(pMemoryRouter, errorReport);
 
 	// Call main program.
-	if (std::strcmp(argv[1], "--") == 0) {
-		mopper(std::cin);
-	} else {
-		mopper(std::ifstream(argv[1], std::ifstream::in));
-	}
-
-	//std::cout << "info: closing havok" << std::endl;
-
-	// Deallocate stack area
-	if (threadMemory)
+	if (std::strcmp(argv[1], "--") == 0)  //  backward compatibility
 	{
-		threadMemory->setStackArea(0, 0);
-		hkDeallocate(stackBuffer);
-
-		threadMemory->removeReference();
-		threadMemory = NULL;
-		stackBuffer = NULL;
+		mopperSimpleMesh(std::cin);
+	}
+	else if (std::strcmp(argv[1], "-msm") == 0)
+	{
+		if (std::strcmp(argv[2], "--") == 0)
+		{
+			mopperSimpleMesh(std::cin);
+		}
+		else
+		{
+			mopperSimpleMesh(std::ifstream(argv[2], std::ifstream::in));
+		}
+	}
+	else if (std::strcmp(argv[1], "-ccm") == 0)
+	{
+		if (std::strcmp(argv[2], "--") == 0)
+		{
+			mopperCompressedMesh(std::cin);
+		}
+		else
+		{
+			mopperCompressedMesh(std::ifstream(argv[2], std::ifstream::in));
+		}
+	}
+	else  //  backward compatibility
+	{
+		mopperSimpleMesh(std::ifstream(argv[1], std::ifstream::in));
 	}
 
 	// Quit base system
@@ -308,4 +595,3 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
-
