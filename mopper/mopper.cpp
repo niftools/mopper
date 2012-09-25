@@ -42,21 +42,8 @@
 
 // Math and base include
 #include <Common/Base/hkBase.h>
-#include <Common/Base/System/hkBaseSystem.h>
 #include <Common/Base/Memory/System/Util/hkMemoryInitUtil.h>
-#include <Common/Base/Memory/Allocator/Malloc/hkMallocAllocator.h>
-#include <Common/Base/System/Error/hkDefaultError.h>
-#include <Common/Base/Monitor/hkMonitorStream.h>
-
-#include <Common/Base/System/Io/FileSystem/hkFileSystem.h>
-#include <Common/Base/Container/LocalArray/hkLocalBuffer.h>
-//
-#include <Physics/Collide/Shape/Convex/Box/hkpBoxShape.h>
-#include <Physics/Collide/Shape/Convex/ConvexTranslate/hkpConvexTranslateShape.h>
-#include <Physics/Collide/Shape/Convex/ConvexTransform/hkpConvexTransformShape.h>
 #include <Physics/Collide/Shape/Compound/Collection/SimpleMesh/hkpSimpleMeshShape.h>
-#include <Physics/Collide/Shape/Compound/Collection/List/hkpListShape.h>
-#include <Physics/Collide/Shape/Convex/Capsule/hkpCapsuleShape.h>
 #include <Physics/Collide/Shape/Compound/Tree/Mopp/hkpMoppBvTreeShape.h>
 #include <Physics/Collide/Shape/Compound/Tree/Mopp/hkpMoppUtility.h>
 #include <Physics/Collide/Util/Welding/hkpMeshWeldingUtility.h>
