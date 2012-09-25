@@ -40,25 +40,23 @@
 #include <fstream>
 #include <cstring>
 
-// Math and base include
 #include <Common/Base/hkBase.h>
 #include <Common/Base/Memory/System/Util/hkMemoryInitUtil.h>
 #include <Physics/Collide/Shape/Compound/Collection/SimpleMesh/hkpSimpleMeshShape.h>
 #include <Physics/Collide/Shape/Compound/Tree/Mopp/hkpMoppBvTreeShape.h>
 #include <Physics/Collide/Shape/Compound/Tree/Mopp/hkpMoppUtility.h>
+#include <Physics/Collide/Shape/Deprecated/CompressedMesh/hkpCompressedMeshShapeBuilder.h>
 #include <Physics/Collide/Util/Welding/hkpMeshWeldingUtility.h>
 #include <Physics/Internal/Collide/Mopp/Code/hkpMoppCode.h>
 
-#include <Physics/Collide/Shape/Deprecated/CompressedMesh/hkpCompressedMeshShapeBuilder.h>
-
 #include <Common/Base/keycode.cxx>
-
-#ifdef HK_FEATURE_PRODUCT_ANIMATION
+// see Common/Base/Config/hkProductFeatures.inl
+#undef HK_FEATURE_PRODUCT_AI
 #undef HK_FEATURE_PRODUCT_ANIMATION
-#endif
-#ifndef HK_EXCLUDE_LIBRARY_hkgpConvexDecomposition
-#define HK_EXCLUDE_LIBRARY_hkgpConvexDecomposition
-#endif
+#undef HK_FEATURE_PRODUCT_CLOTH
+#undef HK_FEATURE_PRODUCT_DESTRUCTION
+#undef HK_FEATURE_PRODUCT_BEHAVIOR
+#define HK_FEATURE_PRODUCT_PHYSICS
 #include <Common/Base/Config/hkProductFeatures.cxx> 
 
 #pragma comment(lib, "hkBase.lib")
