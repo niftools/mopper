@@ -62,8 +62,7 @@
 #include <Physics/Collide/Util/Welding/hkpMeshWeldingUtility.h>
 #include <Physics/Internal/Collide/Mopp/Code/hkpMoppCode.h>
 
-#include <Physics/Collide/Shape/Compound/Collection/CompressedMesh/hkpCompressedMeshShapeBuilder.h>
-
+#include <Physics/Collide/Shape/Deprecated/CompressedMesh/hkpCompressedMeshShapeBuilder.h>
 
 #include <Common/Base/keycode.cxx>
 
