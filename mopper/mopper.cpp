@@ -40,47 +40,39 @@
 #include <fstream>
 #include <cstring>
 
-// Math and base include
 #include <Common/Base/hkBase.h>
-#include <Common/Base/System/hkBaseSystem.h>
 #include <Common/Base/Memory/System/Util/hkMemoryInitUtil.h>
-#include <Common/Base/Memory/Allocator/Malloc/hkMallocAllocator.h>
-#include <Common/Base/System/Error/hkDefaultError.h>
-#include <Common/Base/Monitor/hkMonitorStream.h>
-
-#include <Common/Base/System/Io/FileSystem/hkFileSystem.h>
-#include <Common/Base/Container/LocalArray/hkLocalBuffer.h>
-//
-#include <Physics/Collide/Shape/Convex/Box/hkpBoxShape.h>
-#include <Physics/Collide/Shape/Convex/ConvexTranslate/hkpConvexTranslateShape.h>
-#include <Physics/Collide/Shape/Convex/ConvexTransform/hkpConvexTransformShape.h>
 #include <Physics/Collide/Shape/Compound/Collection/SimpleMesh/hkpSimpleMeshShape.h>
-#include <Physics/Collide/Shape/Compound/Collection/List/hkpListShape.h>
-#include <Physics/Collide/Shape/Convex/Capsule/hkpCapsuleShape.h>
 #include <Physics/Collide/Shape/Compound/Tree/Mopp/hkpMoppBvTreeShape.h>
 #include <Physics/Collide/Shape/Compound/Tree/Mopp/hkpMoppUtility.h>
+#include <Physics/Collide/Shape/Deprecated/CompressedMesh/hkpCompressedMeshShapeBuilder.h>
 #include <Physics/Collide/Util/Welding/hkpMeshWeldingUtility.h>
 #include <Physics/Internal/Collide/Mopp/Code/hkpMoppCode.h>
 
-#include <Physics/Collide/Shape/Compound/Collection/CompressedMesh/hkpCompressedMeshShapeBuilder.h>
-
-
 #include <Common/Base/keycode.cxx>
-
-#ifdef HK_FEATURE_PRODUCT_ANIMATION
+// see Common/Base/Config/hkProductFeatures.inl
+#undef HK_FEATURE_PRODUCT_AI
 #undef HK_FEATURE_PRODUCT_ANIMATION
-#endif
-#ifndef HK_EXCLUDE_LIBRARY_hkgpConvexDecomposition
-#define HK_EXCLUDE_LIBRARY_hkgpConvexDecomposition
-#endif
+#undef HK_FEATURE_PRODUCT_CLOTH
+#undef HK_FEATURE_PRODUCT_DESTRUCTION
+#undef HK_FEATURE_PRODUCT_BEHAVIOR
+#define HK_FEATURE_PRODUCT_PHYSICS
 #include <Common/Base/Config/hkProductFeatures.cxx> 
 
 #pragma comment(lib, "hkBase.lib")
+#pragma comment(lib, "hkCompat.lib")
+#pragma comment(lib, "hkGeometryUtilities.lib")
+#pragma comment(lib, "hkInternal.lib")
+#pragma comment(lib, "hkSceneData.lib")
 #pragma comment(lib, "hkSerialize.lib")
-#pragma comment(lib, "hkpInternal.lib")
-#pragma comment(lib, "hkpUtilities.lib")
+#pragma comment(lib, "hkcdCollide.lib")
+#pragma comment(lib, "hkcdInternal.lib")
 #pragma comment(lib, "hkpCollide.lib")
 #pragma comment(lib, "hkpConstraintSolver.lib")
+#pragma comment(lib, "hkpDynamics.lib")
+#pragma comment(lib, "hkpInternal.lib")
+#pragma comment(lib, "hkpUtilities.lib")
+#pragma comment(lib, "hkpVehicle.lib")
 
 /*-------------------------------------------------------------------------*/
 static void HK_CALL errorReport(const char* msg, void*)
